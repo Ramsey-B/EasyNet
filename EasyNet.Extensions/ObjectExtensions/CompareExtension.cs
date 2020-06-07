@@ -18,7 +18,7 @@ namespace EasyNet.Extensions.ObjectExtensions
                 if (property2 == null) return false;
                 var propValue1 = property1.GetValue(obj1, null);
                 var propValue2 = property2.GetValue(obj2, null);
-                if (IsValueType(propValue1))
+                if (propValue1.IsValueOrPrimitiveType())
                 {
                     if (!propValue1.Equals(propValue2)) return false;
                     continue;
