@@ -49,7 +49,7 @@ namespace EasyNet.Extensions.ObjectExtensions
                 var propValue2 = property2.GetValue(obj2, null);
                 var property1Name = $"{obj1Name}.{property1.Name}";
                 var property2Name = $"{obj2Name}.{property2.Name}";
-                if (!IsValueType(propValue1))
+                if (!propValue1.IsValueOrPrimitiveType())
                 {
                     DeepCompare(ref errorString, propValue1, propValue2, property1Name, property2Name);
                     continue;
@@ -60,12 +60,6 @@ namespace EasyNet.Extensions.ObjectExtensions
                 }
             }
             return errorString.ToString();
-        }
-
-        private static bool IsValueType(object obj)
-        {
-            var type = obj.GetType();
-            return type.IsValueType || type.IsPrimitive || obj is string;
         }
     }
 }
