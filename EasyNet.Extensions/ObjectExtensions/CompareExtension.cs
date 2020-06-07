@@ -32,8 +32,15 @@ namespace EasyNet.Extensions.ObjectExtensions
         {
             if (obj1 == null && obj2 == null) return true;
             if (obj1 == null || obj2 == null) return false;
-            var properties = obj1.GetType().GetProperties();
             var errorString = new StringBuilder();
+            var result = DeepCompare(ref errorString, obj1, obj2, obj1Name, obj2Name);
+            if (errorString.Length != 0) throw new ComparisonException(result.ToString());
+            return true;
+        }
+
+        private static string DeepCompare(ref StringBuilder errorString, object obj1, object obj2, string obj1Name = "obj1", string obj2Name = "obj2")
+        {
+            var properties = obj1.GetType().GetProperties();
             foreach (var property1 in properties)
             {
                 var property2 = obj2.GetType().GetProperty(property1.Name, BindingFlags.Public | BindingFlags.Instance | BindingFlags.IgnoreCase);
@@ -42,17 +49,17 @@ namespace EasyNet.Extensions.ObjectExtensions
                 var propValue2 = property2.GetValue(obj2, null);
                 var property1Name = $"{obj1Name}.{property1.Name}";
                 var property2Name = $"{obj2Name}.{property2.Name}";
-                if (!CompareValues(propValue1, propValue2, property1Name, property2Name)) errorString.AppendLine($"Object '{property1Name}' has value '{propValue1}'. Object '{property2Name}' has value '{propValue2}'.");
+                if (!IsValueType(propValue1))
+                {
+                    DeepCompare(ref errorString, propValue1, propValue2, property1Name, property2Name);
+                    continue;
+                }
+                if (!propValue1.Equals(propValue2))
+                {
+                    errorString.AppendLine($"Object '{property1Name}' has value '{propValue1}'. Object '{property2Name}' has value '{propValue2}'.");
+                }
             }
-
-            if (errorString.Length == 0) return true;
-            throw new ComparisonException(errorString.ToString());
-        }
-
-        private static bool CompareValues(object value1, object value2, string value1Name, string value2Name)
-        {
-            if (IsValueType(value1)) return value1.Equals(value2);
-            return Compare(value1, value2, value1Name, value2Name);
+            return errorString.ToString();
         }
 
         private static bool IsValueType(object obj)
