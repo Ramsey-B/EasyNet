@@ -1,5 +1,5 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using EasyNet.Extensions.Exceptions;
+using System;
 using System.Reflection;
 using System.Text;
 
@@ -7,35 +7,58 @@ namespace EasyNet.Extensions.ObjectExtensions
 {
     public static class CompareExtension
     {
+        public static bool DeepEquals(this object obj1, object obj2)
+        {
+            if (obj1 == null && obj2 == null) return true;
+            if (obj1.GetType() != obj1.GetType()) return false;
+            var properties = obj1.GetType().GetProperties();
+            foreach (var property1 in properties)
+            {
+                var property2 = obj2.GetType().GetProperty(property1.Name, BindingFlags.Public | BindingFlags.Instance | BindingFlags.IgnoreCase);
+                if (property2 == null) return false;
+                var propValue1 = property1.GetValue(obj1, null);
+                var propValue2 = property2.GetValue(obj2, null);
+                if (IsValueType(propValue1))
+                {
+                    if (!propValue1.Equals(propValue2)) return false;
+                    continue;
+                }
+                if (!DeepEquals(propValue1, propValue2)) return false;
+            }
+            return true;
+        }
 
-        private static bool Compare(this object obj1, object obj2)
+        public static bool Compare(this object obj1, object obj2, string obj1Name = "obj1", string obj2Name = "obj2")
         {
             if (obj1 == null && obj2 == null) return true;
             if (obj1 == null || obj2 == null) return false;
             var properties = obj1.GetType().GetProperties();
             var errorString = new StringBuilder();
-            foreach (var property in properties)
+            foreach (var property1 in properties)
             {
-                var property2 = obj2.GetType().GetProperty(property.Name, BindingFlags.Public | BindingFlags.Instance | BindingFlags.IgnoreCase);
-                if (property2 == null) throw new Exception($"Object '{nameof(obj2)}' does not contain property with name '{property.Name}'.");
-                var propValue = property.GetValue(obj1, null);
+                var property2 = obj2.GetType().GetProperty(property1.Name, BindingFlags.Public | BindingFlags.Instance | BindingFlags.IgnoreCase);
+                if (property2 == null) throw new ArgumentException($"Object '{obj1Name}' does not contain property with name '{property1.Name}'.");
+                var propValue1 = property1.GetValue(obj1, null);
                 var propValue2 = property2.GetValue(obj2, null);
-                if (!CompareValues(propValue, propValue2)) errorString.AppendLine($"Object '{nameof(obj1)}' has property '{property.Name}' with value. Object '' has property '' with value.");
+                var property1Name = $"{obj1Name}.{property1.Name}";
+                var property2Name = $"{obj2Name}.{property2.Name}";
+                if (!CompareValues(propValue1, propValue2, property1Name, property2Name)) errorString.AppendLine($"Object '{property1Name}' has value '{propValue1}'. Object '{property2Name}' has value '{propValue2}'.");
             }
 
             if (errorString.Length == 0) return true;
-            throw new Exception(errorString.ToString());
+            throw new ComparisonException(errorString.ToString());
         }
 
-        private static bool CompareValues(object value1, object value2)
+        private static bool CompareValues(object value1, object value2, string value1Name, string value2Name)
         {
             if (IsValueType(value1)) return value1.Equals(value2);
-            return Compare(value1, value2);
+            return Compare(value1, value2, value1Name, value2Name);
         }
 
         private static bool IsValueType(object obj)
         {
-            return obj.GetType().IsValueType;
+            var type = obj.GetType();
+            return type.IsValueType || type.IsPrimitive || obj is string;
         }
     }
 }
